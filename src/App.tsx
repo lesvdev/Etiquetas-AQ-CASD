@@ -15,6 +15,9 @@ import {
   MapPin,
   AlertTriangle,
   FlaskConical,
+  Image as ImageIcon,
+  Camera,
+  FolderCheck,
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { INITIAL_REAGENTS } from './data/defaultReagents';
@@ -62,10 +65,12 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imagesInputRef = useRef<HTMLInputElement>(null);
+  const singleImageInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
   // Categorías únicas
@@ -138,6 +143,74 @@ export default function App() {
     if (e.target) e.target.value = '';
   };
 
+  // Subir fotos múltiples y vincularlas automáticamente por nombre de archivo
+  const handleBatchImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    let matchedCount = 0;
+    const fileList = Array.from(files) as File[];
+
+    fileList.forEach((file: File) => {
+      const fileName = file.name;
+      const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '').trim().toLowerCase();
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        if (!dataUrl) return;
+
+        setReagents((prev) =>
+          prev.map((item) => {
+            const itemFileName = (item.imageUrl || '').toLowerCase();
+            const itemName = item.nombre.toLowerCase();
+
+            // Comprobar coincidencia exacta de nombre de archivo o nombre de reactivo
+            const isMatch =
+              itemFileName === fileName.toLowerCase() ||
+              itemFileName.includes(fileName.toLowerCase()) ||
+              fileName.toLowerCase().includes(itemFileName) ||
+              itemName === fileNameWithoutExt ||
+              fileNameWithoutExt.includes(itemName) ||
+              itemName.includes(fileNameWithoutExt);
+
+            if (isMatch) {
+              matchedCount++;
+              return {
+                ...item,
+                imageUrl: dataUrl,
+              };
+            }
+            return item;
+          })
+        );
+      };
+      reader.readAsDataURL(file);
+    });
+
+    showToast(`✓ Procesando ${fileList.length} fotografías. Se actualizarán en pantalla.`);
+    if (e.target) e.target.value = '';
+  };
+
+  // Cambiar la foto del reactivo actualmente seleccionado
+  const handleSingleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedReagent) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (!dataUrl) return;
+
+      const updated = { ...selectedReagent, imageUrl: dataUrl };
+      setSelectedReagent(updated);
+      setReagents((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      showToast(`✓ Fotografía actualizada para "${selectedReagent.nombre}".`);
+    };
+    reader.readAsDataURL(file);
+    if (e.target) e.target.value = '';
+  };
+
   const handleDownloadSample = () => {
     const sample = generateSampleCsvContent();
     const blob = new Blob(['\ufeff' + sample], { type: 'text/csv;charset=utf-8;' });
@@ -194,6 +267,34 @@ export default function App() {
               onChange={handleFileUpload}
               className="hidden"
             />
+            {/* Input oculto para subir fotografías de reactivos en lote */}
+            <input
+              ref={imagesInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleBatchImagesUpload}
+              className="hidden"
+            />
+            {/* Input oculto para subir fotografía individual */}
+            <input
+              ref={singleImageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleSingleImageUpload}
+              className="hidden"
+            />
+
+            <button
+              id="btn-upload-images-batch"
+              onClick={() => imagesInputRef.current?.click()}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs transition-colors"
+              title="Selecciona una o varias fotos desde tu computador"
+            >
+              <ImageIcon className="w-4 h-4 text-teal-400" />
+              <span>Subir Fotos</span>
+            </button>
+
             <button
               id="btn-upload-csv-direct"
               onClick={() => fileInputRef.current?.click()}
@@ -215,14 +316,14 @@ export default function App() {
             <button
               id="btn-restore-samples"
               onClick={() => {
-                if (window.confirm('¿Deseas restaurar la lista de reactivos de ejemplo?')) {
+                if (window.confirm('¿Deseas restaurar la lista de reactivos inicial con las 70 fichas?')) {
                   setReagents(INITIAL_REAGENTS);
                   setSelectedReagent(INITIAL_REAGENTS[0]);
-                  showToast('Lista restaurada con datos de muestra.');
+                  showToast('Lista restaurada con el catálogo oficial de 70 reactivos.');
                 }
               }}
               className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
-              title="Restaurar ejemplos"
+              title="Restaurar lista oficial"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -389,8 +490,18 @@ export default function App() {
                   </h2>
                 </div>
 
-                {/* Acciones directas (Abrir en Drive / Zoom) */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                {/* Acciones directas (Subir foto individual / Abrir en Drive / Zoom) */}
+                <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                  <button
+                    id="btn-upload-single-photo"
+                    onClick={() => singleImageInputRef.current?.click()}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
+                    title="Cargar o reemplazar foto para este reactivo"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-teal-600" />
+                    <span>Cambiar Foto</span>
+                  </button>
+
                   {activeDriveUrl && (
                     <a
                       id="btn-open-drive-direct"
@@ -455,14 +566,12 @@ export default function App() {
                     <span className="font-semibold text-slate-800 truncate block">{selectedReagent.ubicacion}</span>
                   </div>
                 )}
-                {selectedReagent.carpetaDrive && (
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 col-span-2 sm:col-span-1">
-                    <span className="text-[10px] font-bold text-slate-400 block">CARPETA DRIVE</span>
-                    <span className="font-mono text-[11px] text-slate-700 truncate block">
-                      {selectedReagent.carpetaDrive}
-                    </span>
-                  </div>
-                )}
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 col-span-2 sm:col-span-1">
+                  <span className="text-[10px] font-bold text-slate-400 block">ARCHIVO VINCULADO</span>
+                  <span className="font-mono text-[11px] text-teal-800 truncate block font-semibold" title={selectedReagent.imageUrl}>
+                    {selectedReagent.imageUrl.startsWith('data:') ? 'Foto personalizada cargada' : selectedReagent.imageUrl}
+                  </span>
+                </div>
               </div>
 
               {/* Precauciones / Riesgos */}
