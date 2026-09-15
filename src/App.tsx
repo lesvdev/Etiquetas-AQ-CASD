@@ -81,6 +81,25 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imagesInputRef = useRef<HTMLInputElement>(null);
   const singleImageInputRef = useRef<HTMLInputElement>(null);
+  const viewerRef = useRef<HTMLDivElement>(null);
+  const listTopRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectReagent = (item: ReagentItem) => {
+    setSelectedReagent(item);
+    setZoomLevel(1);
+    // Desplazar automáticamente hacia el visor de la etiqueta
+    setTimeout(() => {
+      if (viewerRef.current) {
+        viewerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
+  };
+
+  const handleScrollToList = () => {
+    if (listTopRef.current) {
+      listTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -517,9 +536,19 @@ export default function App() {
       {/* 3. Contenedor Principal en Dos Paneles (Lista a la izquierda + Visor a la derecha) */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Panel Izquierdo: Lista de Reactivos (5 columnas en pantallas grandes) */}
-        <div className="lg:col-span-5 flex flex-col gap-2 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
-          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">
-            Reactivos encontrados ({filtered.length})
+        <div ref={listTopRef} className="lg:col-span-5 flex flex-col gap-2 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1 scroll-mt-20">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider px-1">
+            <span>Reactivos encontrados ({filtered.length})</span>
+            {selectedReagent && (
+              <button
+                onClick={() => {
+                  viewerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className="lg:hidden text-[11px] font-bold text-emerald-700 hover:underline normal-case"
+              >
+                Ver etiqueta actual ↓
+              </button>
+            )}
           </div>
 
           {filtered.length === 0 ? (
@@ -545,8 +574,8 @@ export default function App() {
                 <div
                   key={item.id}
                   id={`item-row-${item.id}`}
-                  onClick={() => setSelectedReagent(item)}
-                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 ${
+                  onClick={() => handleSelectReagent(item)}
+                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 active:scale-[0.99] ${
                     isSelected
                       ? 'bg-teal-50/80 border-teal-500 ring-2 ring-teal-500/20 shadow-xs'
                       : 'bg-white hover:bg-slate-50/80 border-slate-200/90'
@@ -587,13 +616,18 @@ export default function App() {
                       {item.nombre}
                     </h3>
 
-                    <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 truncate">
-                      {item.ubicacion && (
+                    <div className="flex items-center justify-between gap-2 mt-1 text-[11px] text-slate-500">
+                      {item.ubicacion ? (
                         <span className="flex items-center gap-1 truncate">
                           <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                           <span className="truncate">{item.ubicacion}</span>
                         </span>
+                      ) : (
+                        <span />
                       )}
+                      <span className="text-emerald-700 font-semibold text-[10px] shrink-0 lg:hidden">
+                        Ver etiqueta →
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -603,13 +637,24 @@ export default function App() {
         </div>
 
         {/* Panel Derecho: Visor Directo de la Etiqueta (7 columnas) */}
-        <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xs flex flex-col space-y-4 sticky top-24">
+        <div
+          ref={viewerRef}
+          id="section-image-viewer"
+          className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xs flex flex-col space-y-4 sticky top-20 scroll-mt-20"
+        >
           {selectedReagent ? (
             <>
               {/* Encabezado del visor de etiqueta */}
               <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={handleScrollToList}
+                      className="lg:hidden inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-200 transition-colors"
+                      title="Volver arriba a la lista de reactivos"
+                    >
+                      <span>↑ Lista</span>
+                    </button>
                     <span className="text-[11px] font-extrabold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg border border-slate-200">
                       {selectedReagent.categoria}
                     </span>
