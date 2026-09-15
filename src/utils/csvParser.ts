@@ -39,11 +39,38 @@ export function mapCsvRowToReagent(row: Record<string, any>, index: number): Rea
     if (!val) continue;
 
     // Nombre
-    if (norm === 'nombre' || norm === 'reactivo' || norm === 'nombrereactivo' || norm === 'producto' || norm === 'name' || norm === 'item') {
+    if (
+      norm === 'nombre' ||
+      norm === 'reactivo' ||
+      norm === 'nombrereactivo' ||
+      norm === 'producto' ||
+      norm === 'name' ||
+      norm === 'item'
+    ) {
       nombre = val;
     }
+    // Nombre de la imagen (específico para el formato del usuario)
+    else if (
+      norm === 'nombredelaimagen' ||
+      norm === 'nombreimagen' ||
+      norm === 'archivoimagen' ||
+      norm === 'nombredearchivo' ||
+      norm === 'filename'
+    ) {
+      imageUrl = val;
+      if (!nombre) {
+        // Quitar la extensión .jpeg, .png, etc. para obtener el nombre sugerido si no viene nombre
+        nombre = val.replace(/\.(jpeg|jpg|png|webp|svg)$/i, '').trim();
+      }
+    }
     // Categoría
-    else if (norm === 'categoria' || norm === 'category' || norm === 'tipo' || norm === 'clasificacion' || norm === 'grupo') {
+    else if (
+      norm === 'categoria' ||
+      norm === 'category' ||
+      norm === 'tipo' ||
+      norm === 'clasificacion' ||
+      norm === 'grupo'
+    ) {
       categoria = val;
     }
     // URL / Imagen
@@ -73,23 +100,51 @@ export function mapCsvRowToReagent(row: Record<string, any>, index: number): Rea
       cas = val;
     }
     // Ubicación
-    else if (norm === 'ubicacion' || norm === 'location' || norm === 'estante' || norm === 'laboratorio' || norm === 'almacen') {
+    else if (
+      norm === 'ubicacion' ||
+      norm === 'location' ||
+      norm === 'estante' ||
+      norm === 'laboratorio' ||
+      norm === 'almacen'
+    ) {
       ubicacion = val;
     }
     // Carpeta Drive
-    else if (norm === 'carpetadrive' || norm === 'carpeta' || norm === 'folder' || norm === 'directorio') {
+    else if (
+      norm === 'carpetadrive' ||
+      norm === 'carpeta' ||
+      norm === 'folder' ||
+      norm === 'directorio'
+    ) {
       carpetaDrive = val;
     }
     // Peligros / Riesgos
-    else if (norm === 'peligro' || norm === 'peligros' || norm === 'riesgo' || norm === 'riesgos' || norm === 'ghs' || norm === 'pictogramas') {
+    else if (
+      norm === 'peligro' ||
+      norm === 'peligros' ||
+      norm === 'riesgo' ||
+      norm === 'riesgos' ||
+      norm === 'ghs' ||
+      norm === 'pictogramas'
+    ) {
       peligroStr = val;
     }
     // Descripción
-    else if (norm === 'descripcion' || norm === 'description' || norm === 'detalles' || norm === 'observaciones') {
+    else if (
+      norm === 'descripcion' ||
+      norm === 'description' ||
+      norm === 'detalles' ||
+      norm === 'observaciones'
+    ) {
       descripcion = val;
     }
     // Precauciones
-    else if (norm === 'precauciones' || norm === 'seguridad' || norm === 'precaucion' || norm === 'epp') {
+    else if (
+      norm === 'precauciones' ||
+      norm === 'seguridad' ||
+      norm === 'precaucion' ||
+      norm === 'epp'
+    ) {
       precauciones = val;
     }
     // Pureza
@@ -107,11 +162,17 @@ export function mapCsvRowToReagent(row: Record<string, any>, index: number): Rea
     nombre = String(row[keys[0]]).trim();
   }
 
-  // Si no se encontró imagen, buscar cualquier valor que parezca una URL o ID de Drive
+  // Si no se encontró imagen, buscar cualquier valor que parezca una URL o ID de Drive o archivo de imagen
   if (!imageUrl) {
     for (const key of keys) {
       const v = String(row[key] || '').trim();
-      if (v.startsWith('http://') || v.startsWith('https://') || v.includes('drive.google.com') || v.length > 25 && /^[a-zA-Z0-9_-]+$/.test(v)) {
+      if (
+        v.startsWith('http://') ||
+        v.startsWith('https://') ||
+        v.includes('drive.google.com') ||
+        v.match(/\.(jpeg|jpg|png|webp|svg)$/i) ||
+        (v.length > 25 && /^[a-zA-Z0-9_-]+$/.test(v))
+      ) {
         imageUrl = v;
         break;
       }
@@ -129,7 +190,7 @@ export function mapCsvRowToReagent(row: Record<string, any>, index: number): Rea
   return {
     id: `item-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
     nombre: nombre || `Reactivo ${index + 1}`,
-    categoria: categoria || 'Sin categoría',
+    categoria: categoria || 'General',
     imageUrl: imageUrl || '',
     formula: formula || undefined,
     cas: cas || undefined,

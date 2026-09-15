@@ -38,14 +38,19 @@ export function extractDriveFileId(url: string): string | null {
 }
 
 /**
- * Transforma cualquier URL de Google Drive o GitHub en un enlace de imagen renderizable directamente.
+ * Transforma cualquier URL de Google Drive, GitHub o ruta local en un enlace de imagen renderizable directamente.
  */
 export function getDirectImageUrl(url: string): string {
   if (!url) return '';
   const trimmed = url.trim();
 
-  // Si es Data URL o SVG
+  // Si es Data URL o SVG o blob
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+
+  // Si ya comienza con / o http
+  if (trimmed.startsWith('/')) {
     return trimmed;
   }
 
@@ -66,6 +71,13 @@ export function getDirectImageUrl(url: string): string {
   // Si es Dropbox
   if (trimmed.includes('dropbox.com') && trimmed.includes('?dl=0')) {
     return trimmed.replace('?dl=0', '?raw=1');
+  }
+
+  // Si no tiene protocolo y termina en extensión de imagen, es un archivo local en /reactivos/
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    if (trimmed.match(/\.(jpeg|jpg|png|webp|svg|gif)$/i)) {
+      return `/reactivos/${encodeURIComponent(trimmed)}`;
+    }
   }
 
   return trimmed;

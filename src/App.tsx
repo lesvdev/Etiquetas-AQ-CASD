@@ -26,7 +26,7 @@ import {
 } from './utils/driveUrlHelper';
 import { parseReagentsCsv, generateSampleCsvContent, exportToCsv } from './utils/csvParser';
 
-const STORAGE_KEY = 'simple_lab_reagents_v2';
+const STORAGE_KEY = 'casd_lab_reagents_v3';
 
 export default function App() {
   // Estado de reactivos con persistencia local
