@@ -1,0 +1,6 @@
+{
+  "name": "Visor & Catálogo de Reactivos",
+  "description": "Buscador y visor de fichas e imágenes informativas de reactivos químicos con soporte para Google Drive, GitHub y CSV.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
