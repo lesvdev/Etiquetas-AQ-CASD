@@ -1,13 +1,12 @@
 import React from 'react';
 import {
-  FlaskConical,
   Upload,
   Download,
   Plus,
   BookOpen,
   Link2,
-  RefreshCw,
 } from 'lucide-react';
+import { CasdLogo } from './CasdLogo';
 
 interface NavbarProps {
   reagentsCount: number;
@@ -32,27 +31,25 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
-          {/* Logo & Title */}
+          {/* Logo Oficial CASD & Título del Laboratorio */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-sm ring-2 ring-teal-100">
-              <FlaskConical className="w-5 h-5" />
-            </div>
+            <CasdLogo size={42} className="shrink-0 hover:scale-105 transition-transform" />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight leading-tight">
-                  Visor de Reactivos
+                <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-tight">
+                  I.E. CASD José Prudencio Padilla
                 </h1>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200/60">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                   {reagentsCount} {reagentsCount === 1 ? 'reactivo' : 'reactivos'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 hidden sm:block">
-                Catálogo e imágenes informativas • Soporte Drive &amp; CSV
+              <p className="text-xs text-slate-500 font-medium hidden sm:block">
+                Laboratorio de Química • Visor y Descarga de Etiquetas
               </p>
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Botones de Acción */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Guide & Architecture Button */}
             <button

@@ -18,6 +18,10 @@ import {
   Image as ImageIcon,
   Camera,
   FolderCheck,
+  Plus,
+  ShieldAlert,
+  Printer,
+  Sparkles,
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { INITIAL_REAGENTS } from './data/defaultReagents';
@@ -28,6 +32,10 @@ import {
   getDriveViewerUrl,
 } from './utils/driveUrlHelper';
 import { parseReagentsCsv, generateSampleCsvContent, exportToCsv } from './utils/csvParser';
+import { exportToExcel } from './utils/excelExporter';
+import { downloadReagentImage } from './utils/imageDownloader';
+import { AddEditReagentModal } from './components/AddEditReagentModal';
+import { CasdLogo } from './components/CasdLogo';
 
 const STORAGE_KEY = 'casd_lab_reagents_v3';
 
@@ -59,8 +67,11 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [selectedReagent, setSelectedReagent] = useState<ReagentItem | null>(null);
 
-  // Modal de carga CSV
+  // Modales
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingReagent, setEditingReagent] = useState<ReagentItem | null>(null);
+  const [viewerViewMode, setViewerViewMode] = useState<'photo' | 'sga'>('photo');
   const [zoomLevel, setZoomLevel] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -258,7 +269,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {/* Input oculto para subir CSV directamente */}
             <input
               ref={fileInputRef}
@@ -286,9 +297,22 @@ export default function App() {
             />
 
             <button
+              id="btn-add-reagent-header"
+              onClick={() => {
+                setEditingReagent(null);
+                setIsAddModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl shadow-xs transition-colors"
+              title="Registrar manualmente un nuevo reactivo"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nuevo Reactivo</span>
+            </button>
+
+            <button
               id="btn-upload-images-batch"
               onClick={() => imagesInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs transition-colors"
               title="Selecciona una o varias fotos desde tu computador"
             >
               <ImageIcon className="w-4 h-4 text-teal-400" />
@@ -298,19 +322,23 @@ export default function App() {
             <button
               id="btn-upload-csv-direct"
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-bold bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-xs transition-colors"
             >
               <Upload className="w-4 h-4" />
-              <span>Cargar mi CSV</span>
+              <span>Cargar CSV</span>
             </button>
 
             <button
-              id="btn-export-csv"
-              onClick={() => exportToCsv(reagents)}
-              className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors border border-slate-200"
-              title="Descargar lista actual en CSV"
+              id="btn-export-excel"
+              onClick={() => {
+                exportToExcel(reagents);
+                showToast('✓ Descargando archivo Excel con las fichas completas.');
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl transition-colors shadow-xs"
+              title="Descargar listado completo formateado en Excel (.xlsx)"
             >
-              <Download className="w-4 h-4" />
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>Descargar Excel</span>
             </button>
 
             <button
@@ -323,7 +351,7 @@ export default function App() {
                 }
               }}
               className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
-              title="Restaurar lista oficial"
+              title="Restaurar lista oficial de 70 reactivos"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -468,14 +496,14 @@ export default function App() {
           )}
         </div>
 
-        {/* Panel Derecho: Visor de la Imagen Informativa (7 columnas) */}
+        {/* Panel Derecho: Visor Directo de la Etiqueta (7 columnas) */}
         <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xs flex flex-col space-y-4 sticky top-24">
           {selectedReagent ? (
             <>
-              {/* Encabezado del visor */}
+              {/* Encabezado del visor de etiqueta */}
               <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[11px] font-extrabold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg border border-slate-200">
                       {selectedReagent.categoria}
                     </span>
@@ -484,21 +512,44 @@ export default function App() {
                         {selectedReagent.formula}
                       </span>
                     )}
+                    {selectedReagent.pureza && (
+                      <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                        {selectedReagent.pureza}
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-lg sm:text-xl font-black text-slate-900 mt-1">
                     {selectedReagent.nombre}
                   </h2>
                 </div>
 
-                {/* Acciones directas (Subir foto individual / Abrir en Drive / Zoom) */}
+                {/* Acciones principales: Descargar Etiqueta y opciones */}
                 <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                  {/* Botón Principal: DESCARGAR ETIQUETA */}
+                  <button
+                    id="btn-download-selected-label"
+                    onClick={async () => {
+                      const success = await downloadReagentImage(activeDirectUrl, selectedReagent.nombre);
+                      if (success) {
+                        showToast(`✓ Descargando etiqueta de "${selectedReagent.nombre}"...`);
+                      } else {
+                        showToast(`Abriendo archivo para descarga...`);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl transition-all shadow-xs"
+                    title="Descargar la imagen o etiqueta de este reactivo"
+                  >
+                    <Download className="w-4 h-4 text-emerald-100" />
+                    <span>Descargar Etiqueta</span>
+                  </button>
+
                   <button
                     id="btn-upload-single-photo"
                     onClick={() => singleImageInputRef.current?.click()}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
-                    title="Cargar o reemplazar foto para este reactivo"
+                    title="Cargar o cambiar la foto de la etiqueta de este reactivo"
                   >
-                    <Camera className="w-3.5 h-3.5 text-teal-600" />
+                    <Camera className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Cambiar Foto</span>
                   </button>
 
@@ -508,107 +559,167 @@ export default function App() {
                       href={activeDriveUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors"
+                      title="Abrir archivo en Google Drive"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Abrir en Drive</span>
+                      <span>Drive</span>
                     </a>
                   )}
-                  <div className="flex items-center bg-slate-100 rounded-xl p-0.5">
-                    <button
-                      onClick={() => setZoomLevel((z) => Math.min(z + 0.2, 2.5))}
-                      className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-colors"
-                      title="Acercar"
-                    >
-                      <ZoomIn className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setZoomLevel((z) => Math.max(z - 0.2, 0.6))}
-                      className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-colors"
-                      title="Alejar"
-                    >
-                      <ZoomOut className="w-4 h-4" />
-                    </button>
-                  </div>
                 </div>
               </div>
 
-              {/* Contenedor de la Imagen Informativa */}
-              <div className="w-full aspect-[4/3] bg-slate-900 rounded-2xl overflow-hidden flex items-center justify-center p-3 relative select-none">
+              {/* Barra de Controles de Zoom para la Etiqueta (Ampliar / Alejar / Restablecer) */}
+              <div className="flex items-center justify-between gap-2 bg-slate-50 px-3 py-2 rounded-2xl border border-slate-200/80">
+                <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                  <ImageIcon className="w-4 h-4 text-emerald-600" />
+                  <span>Etiqueta del Envase</span>
+                </span>
+
+                <div className="flex items-center gap-1 bg-white rounded-xl p-1 border border-slate-200 shadow-2xs">
+                  <button
+                    id="btn-zoom-out"
+                    onClick={() => setZoomLevel((z) => Math.max(z - 0.25, 0.5))}
+                    className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold"
+                    title="Alejar (-)"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Alejar</span>
+                  </button>
+
+                  <button
+                    id="btn-zoom-reset"
+                    onClick={() => setZoomLevel(1)}
+                    className="px-2 py-1 text-xs font-mono font-bold text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+                    title="Restablecer tamaño original (100%)"
+                  >
+                    {Math.round(zoomLevel * 100)}%
+                  </button>
+
+                  <button
+                    id="btn-zoom-in"
+                    onClick={() => setZoomLevel((z) => Math.min(z + 0.25, 3.0))}
+                    className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold"
+                    title="Ampliar (+)"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                    <span className="hidden sm:inline">Ampliar</span>
+                  </button>
+
+                  <button
+                    id="btn-zoom-reset-icon"
+                    onClick={() => setZoomLevel(1)}
+                    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                    title="Restablecer vista"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Lienzo de Visualización de la Etiqueta */}
+              <div className="w-full min-h-[380px] max-h-[560px] bg-slate-950 rounded-2xl overflow-auto flex items-center justify-center p-4 relative select-none border border-slate-800 shadow-inner">
                 <div
-                  className="transition-transform duration-150 ease-out max-h-full max-w-full flex items-center justify-center"
+                  className="transition-transform duration-150 ease-out max-h-full max-w-full flex items-center justify-center origin-center"
                   style={{ transform: `scale(${zoomLevel})` }}
                 >
                   <img
                     src={activeDirectUrl}
-                    alt={selectedReagent.nombre}
+                    alt={`Etiqueta de ${selectedReagent.nombre}`}
                     referrerPolicy="no-referrer"
-                    className="max-h-[380px] max-w-full object-contain rounded-lg shadow-xl"
+                    className="max-h-[460px] max-w-full object-contain rounded-lg shadow-2xl transition-all"
                     onError={(e) => {
-                      // Fallback visual si no carga
                       (e.target as HTMLElement).style.display = 'none';
                     }}
                   />
                 </div>
-              </div>
 
-              {/* Ficha rápida de detalles */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
-                {selectedReagent.cas && (
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
-                    <span className="text-[10px] font-bold text-slate-400 block">NÚMERO CAS</span>
-                    <span className="font-mono font-bold text-slate-800">{selectedReagent.cas}</span>
-                  </div>
-                )}
-                {selectedReagent.ubicacion && (
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
-                    <span className="text-[10px] font-bold text-slate-400 block">UBICACIÓN</span>
-                    <span className="font-semibold text-slate-800 truncate block">{selectedReagent.ubicacion}</span>
-                  </div>
-                )}
-                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 col-span-2 sm:col-span-1">
-                  <span className="text-[10px] font-bold text-slate-400 block">ARCHIVO VINCULADO</span>
-                  <span className="font-mono text-[11px] text-teal-800 truncate block font-semibold" title={selectedReagent.imageUrl}>
-                    {selectedReagent.imageUrl.startsWith('data:') ? 'Foto personalizada cargada' : selectedReagent.imageUrl}
-                  </span>
-                </div>
+                {/* Botón flotante para guardar o descargar imagen en un toque */}
+                <button
+                  id="btn-floating-download"
+                  onClick={async () => {
+                    await downloadReagentImage(activeDirectUrl, selectedReagent.nombre);
+                    showToast(`✓ Descarga iniciada para ${selectedReagent.nombre}`);
+                  }}
+                  className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/90 hover:bg-slate-900 text-white rounded-xl text-xs font-bold backdrop-blur-md border border-slate-700 shadow-lg transition-all hover:scale-105"
+                  title="Descargar archivo de imagen en tu equipo"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Descargar</span>
+                </button>
               </div>
-
-              {/* Precauciones / Riesgos */}
-              {selectedReagent.precauciones && (
-                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200/70 text-xs text-amber-900 space-y-0.5">
-                  <span className="font-bold flex items-center gap-1 text-amber-950">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                    Precauciones de Seguridad:
-                  </span>
-                  <p className="leading-relaxed font-medium">{selectedReagent.precauciones}</p>
-                </div>
-              )}
             </>
           ) : (
-            <div className="py-24 text-center text-slate-400">
-              <p className="text-sm font-semibold">Selecciona un reactivo de la lista para observar su ficha.</p>
+            /* Estado Inicial: Sin reactivo seleccionado, mostrando identidad CASD */
+            <div className="py-20 px-6 text-center flex flex-col items-center justify-center space-y-4">
+              <CasdLogo size={96} className="opacity-90 hover:scale-105 transition-transform" />
+              <div className="max-w-md">
+                <h3 className="text-lg font-black text-slate-900">
+                  Laboratorio de Química CASD
+                </h3>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  I.E. José Prudencio Padilla • Barrancabermeja
+                </p>
+                <div className="mt-6 p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-xs font-semibold text-emerald-800 inline-block">
+                  👈 Selecciona un reactivo de la lista para ver, ampliar y descargar su etiqueta.
+                </div>
+              </div>
             </div>
           )}
         </div>
       </main>
 
-      {/* 4. Pie de página sencillo con ayuda y descarga de plantilla */}
+      {/* Pie de página con identidad CASD */}
       <footer className="bg-white border-t border-slate-200 py-4 px-4 sm:px-6 mt-8 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div>
-            ¿Tienes un archivo con fotos? Haz clic en{' '}
-            <strong className="text-teal-700">"Cargar mi CSV"</strong> arriba para sincronizar tu catálogo.
+          <div className="flex items-center gap-2">
+            <CasdLogo size={24} />
+            <span>
+              <strong>I.E. CASD José Prudencio Padilla</strong> — Laboratorio de Química • Barrancabermeja
+            </span>
           </div>
-          <button
-            onClick={handleDownloadSample}
-            className="text-teal-600 hover:text-teal-800 font-bold underline inline-flex items-center gap-1"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Descargar plantilla .CSV de ejemplo
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => exportToExcel(reagents)}
+              className="text-emerald-700 hover:text-emerald-900 font-bold underline inline-flex items-center gap-1"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              Descargar Catálogo Excel (.xlsx)
+            </button>
+            <span className="text-slate-300">|</span>
+            <button
+              onClick={() => exportToCsv(reagents)}
+              className="text-slate-600 hover:text-slate-900 font-medium underline inline-flex items-center gap-1"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Descargar CSV
+            </button>
+          </div>
         </div>
       </footer>
+
+      {/* Modal para Registrar / Editar Reactivo */}
+      <AddEditReagentModal
+        isOpen={isAddModalOpen}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingReagent(null);
+        }}
+        initialData={editingReagent}
+        existingCategories={categories.filter((c) => c !== 'Todos')}
+        onSave={(newReagent) => {
+          setReagents((prev) => {
+            const exists = prev.some((r) => r.id === newReagent.id);
+            if (exists) {
+              return prev.map((r) => (r.id === newReagent.id ? newReagent : r));
+            }
+            return [newReagent, ...prev];
+          });
+          setSelectedReagent(newReagent);
+          setEditingReagent(null);
+          showToast(`✓ Reactivo "${newReagent.nombre}" guardado con éxito.`);
+        }}
+      />
     </div>
   );
 }

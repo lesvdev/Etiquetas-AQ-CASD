@@ -26,6 +26,7 @@ import {
   getDriveViewerUrl,
   getUrlSourceType,
 } from '../utils/driveUrlHelper';
+import { downloadReagentImage } from '../utils/imageDownloader';
 
 interface ReagentViewerModalProps {
   reagent: ReagentItem | null;
@@ -95,13 +96,7 @@ export const ReagentViewerModal: React.FC<ReagentViewerModalProps> = ({
   };
 
   const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = directUrl;
-    link.download = `ficha_${reagent.nombre.replace(/[^a-z0-9]/gi, '_')}.png`;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadReagentImage(directUrl, reagent.nombre);
   };
 
   const handleImageError = () => {

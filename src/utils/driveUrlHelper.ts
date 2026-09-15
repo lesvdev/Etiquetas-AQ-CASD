@@ -76,7 +76,9 @@ export function getDirectImageUrl(url: string): string {
   // Si no tiene protocolo y termina en extensión de imagen, es un archivo local en /reactivos/
   if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
     if (trimmed.match(/\.(jpeg|jpg|png|webp|svg|gif)$/i)) {
-      return `/reactivos/${encodeURIComponent(trimmed)}`;
+      const base = ((import.meta as any).env?.BASE_URL as string) || './';
+      const cleanBase = base.endsWith('/') ? base : `${base}/`;
+      return `${cleanBase}reactivos/${encodeURIComponent(trimmed)}`;
     }
   }
 

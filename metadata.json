@@ -1,6 +1,8 @@
 {
-  "name": "Visor & Catálogo de Reactivos",
-  "description": "Buscador y visor de fichas e imágenes informativas de reactivos químicos con soporte para Google Drive, GitHub y CSV.",
+  "name": "I.E. CASD José Prudencio Padilla - Laboratorio de Química",
+  "description": "Visor de etiquetas e imágenes de reactivos químicos con opciones de descarga y zoom para el laboratorio de química de la I.E. CASD José Prudencio Padilla.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
